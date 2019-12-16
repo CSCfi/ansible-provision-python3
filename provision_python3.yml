@@ -1,0 +1,57 @@
+# SPDX-FileCopyrightText: Copyright (c) 2018-2019 Ministry of Education and Culture, Finland
+#
+# SPDX-License-Identifier: MIT
+---
+
+# Execute on managed nodes where python3 is (possibly) not yet installed
+
+- hosts: distincthosts
+  become: yes
+  strategy: free
+  vars:
+    ansible_python_interpreter: /usr/bin/python2
+    pip3_bin_path:       /usr/bin/pip3
+    python3_bin_path:    /usr/bin/python3
+    rh_pip3_bin_path:    /opt/rh/rh-python36/root/usr/bin/pip3
+    rh_python3_bin_path: /opt/rh/rh-python36/root/usr/bin/python3
+  tasks:
+
+    - name: Check if {{ python3_bin_path }} exists
+      stat: path={{ python3_bin_path }}
+      register: python3_path
+
+    - block:
+
+      # if managed node is integrated with spacewalk, chances are that rh python is available.
+
+      - name: Check if rh-python36 is available
+        shell: yum info rh-python36 warn=false
+        register: rh_python_available
+
+      - block:
+
+        - name: Install Python 3.6
+          shell: yum -y install rh-python36 warn=false
+          register: python3_install_cmd
+          ignore_errors: yes
+
+        - name: Symlink python3 from {{ rh_python3_bin_path }} to {{ python3_bin_path }}
+          file:
+            path: "{{ python3_bin_path }}"
+            src: "{{ rh_python3_bin_path }}"
+            state: link
+
+        - name: Symlink pip3 from {{ rh_pip3_bin_path }} to {{ pip3_bin_path }}
+          file:
+            path: "{{ pip3_bin_path }}"
+            src: "{{ rh_pip3_bin_path }}"
+            state: link
+
+        when: rh_python_available.rc == 0
+
+      # if rh python is not available, install python from regular repositories.
+      - name: Install Python and python-devel
+        shell: yum -y install python3-3.6.8 python3-devel-3.6.8 warn=false
+        when: rh_python_available.rc > 0
+
+      when: not python3_path.stat.exists
