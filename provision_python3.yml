@@ -27,6 +27,7 @@
       - name: Check if rh-python36 is available
         shell: yum info rh-python36 warn=false
         register: rh_python_available
+        ignore_errors: yes
 
       - block:
 
