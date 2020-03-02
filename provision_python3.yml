@@ -56,3 +56,6 @@
         when: rh_python_available.rc > 0
 
       when: not python3_path.stat.exists
+
+    - name: Install selinux python3 bindings
+      pip: name=selinux state=latest executable=pip3
